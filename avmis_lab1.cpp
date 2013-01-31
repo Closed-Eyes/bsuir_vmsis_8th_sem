@@ -76,15 +76,30 @@ float ProcSpeedCalc()
 return    ((float)cyclesStop-(float)cyclesStart);
 }
 
-void main()
+int getIndex(int x, int y, int z, int k)
 {
+	return k*(100*100*8) + z*(100*100)+ y*8 + x;
+}
+
+int main()
+{
+	/*
 	static double mtx1[100][100][8][4];
 	static double mtx2[100][100][4][8];
 	static double mtx3[100][100][8][8];
-
+	*/
+	
+	double *mtx1 = (double*)_aligned_malloc(100*100*8*4*sizeof(double), 32);
+	
+	double *mtx2 = (double*)_aligned_malloc(100*100*4*8*sizeof(double), 32);
+			
+	double *mtx3 = (double*)_aligned_malloc(100*100*8*8*sizeof(double), 32);
+		
 	unsigned __int64 tick1, tick2, averageTicks;
 
-	std::cout << "Test 1: Visual C Compiler. 3 passes" << std::endl; 
+	std::cout << "Test. 3 passes" << std::endl; 
+
+
 		
 	srand(time(NULL));
 
@@ -92,7 +107,7 @@ void main()
 		for(int j = 0; j < 100; j++){
 			for(int k = 0; k < 8; k++){
 				for(int m = 0; m < 4; m++){
-					mtx1[i][j][k][m] = rand()%100;
+					mtx1[i*100*8*4 + j*8*4 + k*4 + m] = i; // rand()%100;
 				}
 			}
 		}
@@ -102,7 +117,7 @@ void main()
 		for(int j = 0; j < 100; j++){
 			for(int k = 0; k < 4; k++){
 				for(int m = 0; m < 8; m++){
-					mtx2[i][j][k][m] = rand()%100;
+					mtx2[i*100*4*8 + j*4*8 + k*8 + m] = j;
 				}
 			}
 		}
@@ -114,13 +129,13 @@ void main()
 
 		for(int i = 0; i < 100; i++){
 			for(int j = 0; j < 100; j++){
-				for(int k = 0; k < 4; k++){
+				for(int k = 0; k < 8; k++){
 					for(int m = 0; m < 8; m++){
-						mtx3[i][j][k][m] = 0;
+						mtx3[i*100*8*8 + j*8*8 + k*8 + m] = 0;
 					}
 				}
 			}
-		}
+		}		
 
 		std::cout << "Calculation has started. Pass number " << pass <<std::endl;
 
@@ -145,7 +160,7 @@ void main()
 						for(int j0 = 0; j0 < 8; j0++){
 							double sum = 0;
 							for(int k0 = 0; k0 < 4; k0++){
-								sum += mtx1[i][k][i0][k0] * mtx2[k][j][k0][j0];
+								sum += mtx1[i*100*8*4 + k*8*4 + i0*4 + k0] * mtx2[k*100*8*4 + j*8*4 + k0*8 +j0];
 							}
 							res[i0][j0] = sum;
 						}
@@ -154,7 +169,7 @@ void main()
 					//MTX3 += RES
 					for(int i0 = 0; i0 < 8; i0++){
 						for(int j0 = 0; j0 < 8; j0++){
-							mtx3[i][j][i0][j0] += res[i0][j0];
+							mtx3[i*100*8*8 + j*8*8 + i0*8 + j0] += res[i0][j0];
 						}
 					}
 				}
@@ -171,5 +186,8 @@ void main()
 	std::cout << std::endl;
 	std::cout << "Time:  " << time << std::endl;
 	std::cout << "Ticks: " << averageTicks/3 << std::endl;
+	std::cout << mtx3[4*100*8*8 + 3*8*8 + 2*8 + 1] << std::endl;
 	system("pause");
+
+	return 0;
 }
