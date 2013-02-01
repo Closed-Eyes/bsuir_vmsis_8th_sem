@@ -1,0 +1,2 @@
+﻿icl avmis_lab1.cpp /Qvec /QxSSE2 /QaxSSE2 /Qvec_report3
+icl avmis_lab1_omp.cpp /Qopenmp /Qopenmp-report:2
