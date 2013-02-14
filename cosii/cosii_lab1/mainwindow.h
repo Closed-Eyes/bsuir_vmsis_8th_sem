@@ -33,8 +33,10 @@ private:
     Ui::MainWindow *ui;    
 
     QImage image;
+    QString fileName;
 
-    void openFile();    
+    void openFile();
+    void detect();
 };
 
 #endif // MAINWINDOW_H
