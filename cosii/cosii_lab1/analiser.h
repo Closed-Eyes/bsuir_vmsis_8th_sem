@@ -7,6 +7,7 @@
 #include <qmath.h>
 #include <QDebug>
 
+#include "calc.h"
 #include <time.h>
 
 #include <opencv2/core/core.hpp>
@@ -32,6 +33,7 @@ struct Claster
      int clasterId;
 
      int area;
+     //int perimeter;
      double density;
      double elognation;
 };
@@ -44,24 +46,24 @@ private:
     int rows, cols;    
     int clasterAmount;
 
+    int iterations;
+
     QMap<int, cv::Scalar> labelsColors;
 
     void fillLabels(const cv::Mat &img, int x, int y, int labelNum);
-    bool hasNeighbor(int neighbor, int x, int y);
-    double Mij(int iPow, int jPow, QList<QPoint> points, QPoint center);
-    double calculateRange(double x1, double y1, double z1, double x2, double y2, double z2);
-
+    int hasNeighbors(int neighbor, int x, int y);
+    void attributeDetection();
+    void createLabelsMap(const cv::Mat &img);
 
 public:
     Analiser();
     ~Analiser();
-    int** createLabelsMap(const cv::Mat &img);
-    void paintImage(cv::Mat &img);
-    QMap<int, cv::Scalar> getLabelColors();
-    void attributeDetection();
 
     void claster(const cv::Mat img_bw, int clasterAmount);
     void paintClasters(cv::Mat &img);
+    void paintObjects(cv::Mat &img);
+
+    int getIterationsNum();
 };
 
 #endif // ANALISER_H

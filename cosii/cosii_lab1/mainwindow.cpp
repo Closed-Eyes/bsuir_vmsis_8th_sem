@@ -7,8 +7,14 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::openFile);
-    connect(ui->detectButton, &QPushButton::pressed, this, &MainWindow::detect);
+    connect(ui->openButton, SIGNAL(clicked()), this, SLOT(openFile()));
+    connect(ui->detectButton, SIGNAL(clicked()), this, SLOT(detect()));
+    connect(ui->adjustButton, SIGNAL(clicked()), this, SLOT(adjust()));
+
+    this->setFixedSize(this->size());
+
+    maxImageHeight = ui->imageLabel->height();
+    maxImageWidth = ui->imageLabel->width();
 }
 
 MainWindow::~MainWindow()
@@ -18,28 +24,28 @@ MainWindow::~MainWindow()
 
 void MainWindow::openFile()
 {
-    fileName = QFileDialog::getOpenFileName(this,
+    QString fileToOpen = QFileDialog::getOpenFileName(this,
                                             tr("Open file"),
-                                            QDir::currentPath());
-    if(!fileName.isEmpty()) {
-        cv::Mat image_rgb = cv::imread(fileName.toStdString());
+                                            QDir::homePath());
+    if(!fileToOpen.isEmpty()) {
+        cv::Mat image_rgb = cv::imread(fileToOpen.toStdString());
 
         if(image_rgb.data == NULL) {
             QMessageBox::information(this,
                                      tr("Error"),
-                                     tr("Cannot load %1.").arg(fileName));
+                                     tr("Cannot load %1.").arg(fileToOpen));
             return;
         }
 
-        image = Converter::Mat2QImage(image_rgb);
+        QImage img = Converter::Mat2QImage(image_rgb);
+        img = img.scaled(img.width() < maxImageWidth ? img.width() : maxImageWidth,
+                         img.height() < maxImageHeight ? img.height() : maxImageHeight,
+                         Qt::KeepAspectRatio,
+                         Qt::SmoothTransformation);
 
-        ui->imageLabel->setPixmap(QPixmap::fromImage(image));
+        ui->imageLabel->setPixmap(QPixmap::fromImage(img));
 
-        ui->imageLabel->adjustSize();
-        this->resize(image.width(), image.height() + ui->menuBar->height() + ui->clasterSpinBox->height() + 5);
-
-        ui->detectButton->setEnabled(true);
-        ui->clasterSpinBox->setEnabled(true);
+        fileName = fileToOpen;
     }
 }
 
@@ -53,31 +59,97 @@ void MainWindow::detect()
                                  tr("Cannot load %1.").arg(fileName));
         return;
     }
-    cv::Mat image_gray;
-    cv::cvtColor(image_rgb, image_gray, CV_RGB2GRAY); // to grayscale
-
-    cv::Mat image_blured;
-    cv::medianBlur(image_gray, image_blured, 7); // ADJUSTABLE
-
-    cv::Mat image_smoothed;
-    cv::bilateralFilter(image_blured, image_smoothed, 5, 120, 100);
-
-    cv::imwrite("image_sm.jpg", image_smoothed);
-
-    cv::Mat image_bw;
-
-    image_bw = image_blured > 180; // binarization ADJUSTABLE
-
-    cv::imwrite("image_bw.jpg", image_bw);
 
     Analiser analiser;
-    analiser.claster(image_bw, ui->clasterSpinBox->value());
+    analiser.claster(imageToProcess, ui->clasterSpinBox->value());
     analiser.paintClasters(image_rgb);
 
-    image = Converter::Mat2QImage(image_rgb);
+    QImage img = Converter::Mat2QImage(image_rgb);
+    img = img.scaled(img.width() < maxImageWidth ? img.width() : maxImageWidth,
+                     img.height() < maxImageHeight ? img.height() : maxImageHeight,
+                     Qt::KeepAspectRatio,
+                     Qt::SmoothTransformation);
 
-    ui->imageLabel->setPixmap(QPixmap::fromImage(image));
+    ui->imageLabel->setPixmap(QPixmap::fromImage(img));
 
-    ui->imageLabel->adjustSize();
-    this->resize(image.width(), image.height() + ui->menuBar->height() + ui->clasterSpinBox->height() + 5);
+    ui->detectButton->setEnabled(false);
+    ui->clasterSpinBox->setEnabled(false);
+
+    QMessageBox::information(this,
+                             "Info",
+                             QString("Number of iterations: %1").arg(analiser.getIterationsNum()));
+}
+
+void MainWindow::adjust()
+{
+    cv::Mat imageRgb = cv::imread(fileName.toStdString());
+
+    if(imageRgb.data == NULL) {
+        QMessageBox::information(this,
+                                 tr("Error"),
+                                 tr("Cannot load %1.").arg(fileName));
+        return;
+    }
+    /*
+    cv::Mat image_smoothed;
+    cv::bilateralFilter(image_rgb, image_smoothed, ui->bDiameterSpinBox->value(), ui->bSigmaColorSpinBox->value(), ui->bSigmaSpaceSpinBox->value());
+    cv::Mat image_blured;
+    cv::medianBlur(image_gray, image_blured, ui->mbKernelSpinBox->value());
+    */
+
+    cv::Mat imageBlured;
+    cv::medianBlur(imageRgb, imageBlured, ui->medianKernelSpinBox->value());
+
+    cv::Mat imageGray;
+    cv::cvtColor(imageBlured, imageGray, CV_RGB2GRAY);
+
+    cv::Mat imageSmoothed;
+    cv::GaussianBlur(imageGray,
+                     imageSmoothed,
+                     cv::Size(0, 0),
+                     ui->gaussSigmaXSpinBox->value(),
+                     ui->gaussSigmaYSpinBox->value());
+
+    cv::Mat imageBw;
+    imageBw = imageSmoothed > ui->binSpinBox->value(); // binarization
+
+
+    // Calculate amount of bw pixels
+    // so we can know, which color backgroung is
+
+    int whitePixels = 0;
+    int blackPixels = 0;
+
+    for(int i = 0; i < imageBw.rows; i++) {
+        for(int j = 0; j < imageBw.cols; j++) {
+            if(imageBw.data[imageBw.channels()*(imageBw.cols*i + j)] == 255)
+                whitePixels++;
+            if(imageBw.data[imageBw.channels()*(imageBw.cols*i + j)] == 0)
+                blackPixels++;
+        }
+    }
+
+    // If there are more white pixels, so background is white
+    // and we need to inverse colors
+
+    if(whitePixels > blackPixels) {
+        for(int i = 0; i < imageBw.rows; i++) {
+            for(int j = 0; j < imageBw.cols; j++) {
+                imageBw.data[imageBw.channels()*(imageBw.cols*i + j)] = 255 - imageBw.data[imageBw.channels()*(imageBw.cols*i + j)];
+            }
+        }
+    }
+
+    QImage img = Converter::Mat2QImage(imageBw);
+    img = img.scaled(img.width() < maxImageWidth ? img.width() : maxImageWidth,
+                     img.height() < maxImageHeight ? img.height() : maxImageHeight,
+                     Qt::KeepAspectRatio,
+                     Qt::SmoothTransformation);
+
+    ui->imageLabel->setPixmap(QPixmap::fromImage(img));
+
+    imageToProcess = imageBw;
+
+    ui->detectButton->setEnabled(true);
+    ui->clasterSpinBox->setEnabled(true);
 }

@@ -15,18 +15,21 @@ TEMPLATE = app
 SOURCES += main.cpp\
         mainwindow.cpp \
     converter.cpp \
-    analiser.cpp
+    analiser.cpp \
+    calc.cpp
 
 HEADERS  += mainwindow.h \
     converter.h \
-    analiser.h
+    analiser.h \
+    calc.h
 
 FORMS    += mainwindow.ui
 
-INCLUDEPATH += C:\\OpenCV-2.4.3\\install\\include
-LIBS += -LC:\\OpenCV-2.4.3\\install\\lib\
-    -lopencv_core243d.dll \
-    -lopencv_highgui243d.dll \
-    -lopencv_imgproc243d.dll \
-    -lopencv_features2d243d.dll \
-    -lopencv_calib3d243d.dll
+INCLUDEPATH += /usr/local/include/opencv
+LIBS += -L/usr/local/lib
+LIBS += -lopencv_core
+LIBS += -lopencv_imgproc
+LIBS += -lopencv_highgui
+LIBS += -lopencv_features2d
+LIBS += -lopencv_calib3d
+

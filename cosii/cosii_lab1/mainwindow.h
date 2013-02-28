@@ -28,15 +28,21 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    
-private:
-    Ui::MainWindow *ui;    
 
-    QImage image;
-    QString fileName;
-
+public slots:
     void openFile();
     void detect();
+    void adjust();   
+    
+private:
+    Ui::MainWindow *ui;
+
+    cv::Mat imageToProcess;
+    QString fileName;
+
+    int maxImageWidth;
+    int maxImageHeight;
+
 };
 
 #endif // MAINWINDOW_H
